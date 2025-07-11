@@ -3,6 +3,10 @@ dotenv.config();
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const admin = require("firebase-admin");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+const serviceAccount = JSON.parse(decoded);
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +14,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.iuxl4dg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -27,6 +34,26 @@ async function run() {
     const db = client.db("sportDB");
     const sportCollection = db.collection("sports");
     const usersCollection = db.collection("users");
+
+    // custom middleware
+  const verifyFbToken = async(req,res,next)=>{
+    const authHeaders = req.headers.authorization;
+    if(!authHeaders){
+      return res.status(401).send({message: "unauthorized access"})
+    }
+
+    const token = authHeaders.split(' ')[1];
+    if(!token){
+      return res.status(401).send({message: "unauthorized access"})
+    }
+      try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.decoded = decodedToken;
+    next();
+  } catch (error) {
+    res.status(403).send({ message: "Forbidden access" });
+  }
+  }
 
     // Save new user to DB if not exists
 app.post("/users", async (req, res) => {
