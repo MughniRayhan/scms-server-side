@@ -33,6 +33,8 @@ async function run() {
     await client.connect();
     const db = client.db("sportDB");
     const sportCollection = db.collection("sports");
+    const courtsCollection = db.collection("courts");
+    const bookingsCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
 
     // custom middleware
@@ -72,6 +74,44 @@ app.post("/users", async (req, res) => {
     res.status(500).send({ message: "Failed to save user" });
   }
 });
+
+
+  // ✅ Route to get courts with pagination
+    app.get('/courts', async (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 6;
+      const skip = (page - 1) * limit;
+
+      const total = await courtsCollection.countDocuments();
+      const courts = await courtsCollection.find().skip(skip).limit(limit).toArray();
+
+      res.send({ courts, total });
+    });
+
+    // ✅ Route to bulk insert courts data 
+    app.post('/courts/bulk', async (req, res) => {
+      const courts = req.body;
+      if (!Array.isArray(courts)) {
+        return res.status(400).send({ message: "Invalid data format" });
+      }
+      try {
+        const result = await courtsCollection.insertMany(courts);
+        res.send({ message: "Courts inserted", count: result.insertedCount });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Insert failed" });
+      }
+    });
+
+    // ✅ Route to create booking (protected)
+    app.post('/bookings', verifyFbToken, async (req, res) => {
+      const booking = req.body;
+      booking.status = "pending"; // default status
+      const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
+
 
   } finally {
     
