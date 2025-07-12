@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 dotenv.config();
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
 const serviceAccount = JSON.parse(decoded);
@@ -117,10 +117,13 @@ app.get('/bookings/pending/:email', verifyFbToken, async (req, res) => {
   res.send(bookings);
 });
 
-//  Delete a booking by ID
-app.delete('/bookings/:id', verifyFbToken, async (req, res) => {
+//  Cancel booking by updating status
+app.patch('/bookings/cancel/:id', verifyFbToken, async (req, res) => {
   const id = req.params.id;
-  const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
+  const result = await bookingsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { status: "cancelled" } }
+  );
   res.send(result);
 });
 
