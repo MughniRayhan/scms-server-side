@@ -57,6 +57,13 @@ async function run() {
   }
   }
 
+ // GET user by email (protected)
+app.get('/users/:email', verifyFbToken, async (req, res) => {
+  const email = req.params.email;
+  const user = await usersCollection.findOne({ email });
+  res.send(user);
+});
+
     // Save new user to DB if not exists
 app.post("/users", async (req, res) => {
   try {
@@ -76,7 +83,7 @@ app.post("/users", async (req, res) => {
 });
 
 
-  // ✅ Route to get courts with pagination
+//  Route to get courts with pagination
     app.get('/courts', async (req, res) => {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 6;
@@ -88,7 +95,7 @@ app.post("/users", async (req, res) => {
       res.send({ courts, total });
     });
 
-    // ✅ Route to bulk insert courts data 
+  //  Route to bulk insert courts data 
     app.post('/courts/bulk', async (req, res) => {
       const courts = req.body;
       if (!Array.isArray(courts)) {
@@ -103,7 +110,22 @@ app.post("/users", async (req, res) => {
       }
     });
 
-    // ✅ Route to create booking (protected)
+//  Get all pending bookings for the logged-in user
+app.get('/bookings/pending/:email', verifyFbToken, async (req, res) => {
+  const email = req.params.email;
+  const bookings = await bookingsCollection.find({ userEmail: email, status: "pending" }).toArray();
+  res.send(bookings);
+});
+
+//  Delete a booking by ID
+app.delete('/bookings/:id', verifyFbToken, async (req, res) => {
+  const id = req.params.id;
+  const result = await bookingsCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
+
+ // Route to create booking 
     app.post('/bookings', verifyFbToken, async (req, res) => {
       const booking = req.body;
       booking.status = "pending"; // default status
