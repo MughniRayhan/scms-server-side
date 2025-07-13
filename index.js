@@ -6,7 +6,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
 const serviceAccount = JSON.parse(decoded);
-
+const courts = require('../scms-client-side/public/courts.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +36,9 @@ async function run() {
     const courtsCollection = db.collection("courts");
     const bookingsCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
+
+
+
 
     // custom middleware
   const verifyFbToken = async(req,res,next)=>{
@@ -151,18 +154,18 @@ app.post("/users", async (req, res) => {
 
   //  Route to bulk insert courts data 
     app.post('/courts/bulk', async (req, res) => {
-      const courts = req.body;
-      if (!Array.isArray(courts)) {
-        return res.status(400).send({ message: "Invalid data format" });
-      }
-      try {
-        const result = await courtsCollection.insertMany(courts);
-        res.send({ message: "Courts inserted", count: result.insertedCount });
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ message: "Insert failed" });
-      }
-    });
+  const courts = req.body;
+  if (!Array.isArray(courts)) {
+    return res.status(400).send({ message: "Invalid data format" });
+  }
+  try {
+    const result = await courtsCollection.insertMany(courts);
+    res.send({ message: "Courts inserted", count: result.insertedCount });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Insert failed" });
+  }
+});
 
 // Get all pending bookings
 app.get('/bookings/pending', verifyFbToken, verifyAdmin, async (req, res) => {
@@ -235,7 +238,19 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
       res.send(result);
     });
 
+// Admin stats route
+app.get('/admin/stats', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const totalCourts = await courtsCollection.countDocuments();
+    const totalUsers = await usersCollection.countDocuments();
+    const totalMembers = await usersCollection.countDocuments({ role: "member" });
 
+    res.send({ totalCourts, totalUsers, totalMembers });
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).send({ message: "Failed to fetch stats" });
+  }
+});
 
   } finally {
     
