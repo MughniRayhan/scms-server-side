@@ -57,6 +57,40 @@ async function run() {
   }
   }
 
+  // varify admin role
+  const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  if (!email) return res.status(401).send({ message: "Unauthorized" });
+
+  try {
+    const user = await usersCollection.findOne({ email });
+    if(!user || user.role !== 'admin'){
+      return res.status(403).send({message: "Forbidden accesss"})
+    }
+    next();
+  } catch (error) {
+    console.error("Error fetching user role:", error);
+    res.status(500).send({ message: "Failed to fetch user role" });
+  }
+};
+
+// Verify Member Middleware
+const verifyMember = async (req, res, next) => {
+  const email = req.decoded.email;
+  if (!email) return res.status(401).send({ message: "Unauthorized" });
+
+  try {
+    const user = await usersCollection.findOne({ email });
+    if(!user || user.role !== 'member'){
+      return res.status(403).send({message: "Forbidden accesss"})
+    }
+    next();
+  } catch (error) {
+    console.error("Error fetching user role:", error);
+    res.status(500).send({ message: "Failed to fetch user role" });
+  }
+};
+
  // GET user by email (protected)
 app.get('/users/:email', verifyFbToken, async (req, res) => {
   const email = req.params.email;
@@ -110,6 +144,13 @@ app.post("/users", async (req, res) => {
       }
     });
 
+// Get all pending bookings
+app.get('/bookings/pending', verifyFbToken, verifyAdmin, async (req, res) => {
+  const pendingBookings = await bookingsCollection.find({ status: "pending" }).toArray();
+  res.send(pendingBookings);
+});
+
+
 //  Get all pending bookings for the logged-in user
 app.get('/bookings/pending/:email', verifyFbToken, async (req, res) => {
   const email = req.params.email;
@@ -127,11 +168,49 @@ app.patch('/bookings/cancel/:id', verifyFbToken, async (req, res) => {
   res.send(result);
 });
 
+// Approve booking 
+app.patch('/bookings/approve/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const bookingId = req.params.id;
+
+  // Find the booking first
+  const booking = await bookingsCollection.findOne({ _id: new ObjectId(bookingId) });
+  if (!booking) {
+    return res.status(404).send({ message: "Booking not found" });
+  }
+
+  const userEmail = booking.userEmail;
+
+  // Update booking status to 'approved'
+  const updateBookingResult = await bookingsCollection.updateOne(
+    { _id: new ObjectId(bookingId) },
+    { $set: { status: "approved" } }
+  );
+
+  // Update user role to 'member' and set membership date
+  const updateUserResult = await usersCollection.updateOne(
+    { email: userEmail },
+    { $set: { role: "member", membership_date: new Date() } }
+  );
+
+  res.send({
+    message: "Booking approved and user promoted to member",
+    bookingUpdated: updateBookingResult.modifiedCount > 0,
+    userUpdated: updateUserResult.modifiedCount > 0
+  });
+});
+
+
+// Reject (Delete) booking
+app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const bookingId = req.params.id;
+  const result = await bookingsCollection.deleteOne({ _id: new ObjectId(bookingId) });
+  res.send(result);
+});
 
  // Route to create booking 
     app.post('/bookings', verifyFbToken, async (req, res) => {
       const booking = req.body;
-      booking.status = "pending"; // default status
+      booking.status = "pending"; 
       const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
