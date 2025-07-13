@@ -175,6 +175,71 @@ app.post("/users", async (req, res) => {
       res.send({ courts, total });
     });
 
+    // Get all courts (no pagination) for admin manage page
+app.get('/courts/all', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const courts = await courtsCollection.find().toArray();
+    res.send(courts);
+  } catch (error) {
+    console.error("Error fetching all courts:", error);
+    res.status(500).send({ message: "Failed to fetch all courts" });
+  }
+});
+
+    
+
+// Add new court
+app.post('/courts', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const court = req.body;
+    const result = await courtsCollection.insertOne(court);
+    res.send(result);
+  } catch (error) {
+    console.error("Error adding court:", error);
+    res.status(500).send({ message: "Failed to add court" });
+  }
+});
+
+
+// Update court by ID
+app.put('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const updatedCourt = req.body;
+
+  // Remove _id field if it exists in payload
+  delete updatedCourt._id;
+
+  try {
+    const result = await courtsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedCourt }
+    );
+    res.send(result);
+  } catch (error) {
+    console.error("Error updating court:", error);
+    res.status(500).send({ message: "Update failed" });
+  }
+});
+
+
+
+// Delete court
+app.delete('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await courtsCollection.deleteOne({ _id: new ObjectId(id) });
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: "Court not found" });
+    }
+    res.send({ message: "Court deleted", result });
+  } catch (error) {
+    console.error("Error deleting court:", error);
+    res.status(500).send({ message: "Delete failed" });
+  }
+});
+
+
+
   //  Route to bulk insert courts data 
     app.post('/courts/bulk', async (req, res) => {
   const courts = req.body;
