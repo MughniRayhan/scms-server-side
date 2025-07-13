@@ -252,6 +252,37 @@ app.get('/admin/stats', verifyFbToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// Get all members or search by name
+app.get('/members', verifyFbToken, verifyAdmin, async (req, res) => {
+  const search = req.query.search;
+  let query = { role: "member" };
+
+  if (search) {
+    query.displayName = { $regex: search, $options: "i" }; // case-insensitive search by name
+  }
+
+  try {
+    const members = await usersCollection.find(query).toArray();
+    res.send(members);
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    res.status(500).send({ message: "Failed to fetch members" });
+  }
+});
+
+// Delete a member by id
+app.delete('/members/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await usersCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error("Error deleting member:", error);
+    res.status(500).send({ message: "Failed to delete member" });
+  }
+});
+
+
   } finally {
     
   }
