@@ -94,6 +94,29 @@ const verifyMember = async (req, res, next) => {
   }
 };
 
+// Get all users or search by name/email
+app.get('/users', verifyFbToken, verifyAdmin, async (req, res) => {
+  const search = req.query.search;
+  let query = {};
+
+  if (search) {
+    query = {
+      $or: [
+        { displayName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } }
+      ]
+    };
+  }
+
+  try {
+    const users = await usersCollection.find(query).toArray();
+    res.send(users);
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).send({ message: "Failed to fetch users" });
+  }
+});
+
 // GET user role by email 
 app.get('/users/role/:email', async (req, res) => {
   try {
