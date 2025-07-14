@@ -370,20 +370,31 @@ app.delete('/members/:id', verifyFbToken, verifyAdmin, async (req, res) => {
 
 
 // Get all announcements
-app.get('/announcements', async (req, res) => {
-  const announcements = await announcementsCollection.find().toArray();
-  res.send(announcements);
+app.get('/announcements', verifyFbToken, async (req, res) => {
+  try {
+    const announcements = await announcementsCollection.find().sort({ createdAt: -1 }).toArray();
+    res.send(announcements);
+  } catch (error) {
+    console.error("Error fetching announcements:", error);
+    res.status(500).send({ message: "Failed to fetch announcements" });
+  }
 });
 
 // Add announcement
-app.post('/announcements', async (req, res) => {
-  const announcement = req.body;
-  const result = await announcementsCollection.insertOne(announcement);
-  res.send(result);
+app.post('/announcements', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const announcement = req.body;
+    announcement.createdAt = new Date(); // ⬅️ adds current date and time
+    const result = await announcementsCollection.insertOne(announcement);
+    res.send(result);
+  } catch (error) {
+    console.error("Error adding announcement:", error);
+    res.status(500).send({ message: "Failed to add announcement" });
+  }
 });
 
 // Update announcement
-app.put('/announcements/:id', async (req, res) => {
+app.put('/announcements/:id',verifyFbToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
   const data = req.body;
 
@@ -395,7 +406,7 @@ app.put('/announcements/:id', async (req, res) => {
 });
 
 // Delete announcement
-app.delete('/announcements/:id', async (req, res) => {
+app.delete('/announcements/:id',verifyFbToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
   const result = await announcementsCollection.deleteOne({ _id: new ObjectId(id) });
   res.send(result);
