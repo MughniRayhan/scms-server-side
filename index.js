@@ -32,11 +32,10 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     const db = client.db("sportDB");
-    const sportCollection = db.collection("sports");
     const courtsCollection = db.collection("courts");
     const bookingsCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
-
+    const announcementsCollection = db.collection("announcements");
 
 
 
@@ -186,8 +185,6 @@ app.get('/courts/all', verifyFbToken, verifyAdmin, async (req, res) => {
   }
 });
 
-    
-
 // Add new court
 app.post('/courts', verifyFbToken, verifyAdmin, async (req, res) => {
   try {
@@ -199,7 +196,6 @@ app.post('/courts', verifyFbToken, verifyAdmin, async (req, res) => {
     res.status(500).send({ message: "Failed to add court" });
   }
 });
-
 
 // Update court by ID
 app.put('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
@@ -221,8 +217,6 @@ app.put('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
   }
 });
 
-
-
 // Delete court
 app.delete('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
   const id = req.params.id;
@@ -237,8 +231,6 @@ app.delete('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
     res.status(500).send({ message: "Delete failed" });
   }
 });
-
-
 
   //  Route to bulk insert courts data 
     app.post('/courts/bulk', async (req, res) => {
@@ -284,7 +276,7 @@ app.patch('/bookings/approve/:id', verifyFbToken, verifyAdmin, async (req, res) 
   const bookingId = req.params.id;
 
   // Find the booking first
-  const booking = await bookingsCollection.findOne({ _id: new ObjectId(bookingId) });
+ const booking = await bookingsCollection.findOne({ _id: new ObjectId(bookingId) });
   if (!booking) {
     return res.status(404).send({ message: "Booking not found" });
   }
@@ -309,7 +301,6 @@ app.patch('/bookings/approve/:id', verifyFbToken, verifyAdmin, async (req, res) 
     userUpdated: updateUserResult.modifiedCount > 0
   });
 });
-
 
 // Reject (Delete) booking
 app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) => {
@@ -370,6 +361,38 @@ app.delete('/members/:id', verifyFbToken, verifyAdmin, async (req, res) => {
   }
 });
 
+
+// Get all announcements
+app.get('/announcements', async (req, res) => {
+  const announcements = await announcementsCollection.find().toArray();
+  res.send(announcements);
+});
+
+// Add announcement
+app.post('/announcements', async (req, res) => {
+  const announcement = req.body;
+  const result = await announcementsCollection.insertOne(announcement);
+  res.send(result);
+});
+
+// Update announcement
+app.put('/announcements/:id', async (req, res) => {
+  const id = req.params.id;
+  const data = req.body;
+
+  const result = await announcementsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: data }
+  );
+  res.send(result);
+});
+
+// Delete announcement
+app.delete('/announcements/:id', async (req, res) => {
+  const id = req.params.id;
+  const result = await announcementsCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
 
   } finally {
     
