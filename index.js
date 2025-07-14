@@ -261,6 +261,13 @@ app.get('/bookings/pending/:email', verifyFbToken, async (req, res) => {
   res.send(bookings);
 });
 
+//get all approved bookings
+app.get('/bookings/approved/:email', verifyFbToken, verifyMember, async (req, res) => {
+  const email = req.params.email;
+  const bookings = await bookingsCollection.find({ userEmail: email, status: "approved" }).toArray();
+  res.send(bookings);
+});
+
 //  Cancel booking by updating status
 app.patch('/bookings/cancel/:id', verifyFbToken, async (req, res) => {
   const id = req.params.id;
