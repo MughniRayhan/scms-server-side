@@ -335,6 +335,24 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
   res.send(result);
 });
 
+// Get all confirmed bookings with optional search by courtType
+app.get('/bookings/confirmed/all', verifyFbToken, verifyAdmin, async (req, res) => {
+  const search = req.query.search;
+  let query = { status: "confirmed" };
+
+  if (search) {
+    query.courtType = { $regex: search, $options: 'i' }; // case-insensitive search
+  }
+
+  try {
+    const bookings = await bookingsCollection.find(query).toArray();
+    res.send(bookings);
+  } catch (error) {
+    console.error("Error fetching confirmed bookings:", error);
+    res.status(500).send({ message: "Failed to fetch confirmed bookings" });
+  }
+});
+
 // Get all confirmed bookings for the logged-in user
 app.get('/bookings/confirmed/:email', verifyFbToken, verifyMember, async (req, res) => {
   const email = req.params.email;
@@ -483,6 +501,17 @@ app.post('/payments', verifyFbToken, verifyMember, async (req, res) => {
   } catch (error) {
     console.error("Error storing payment:", error);
     res.status(500).send({ message: "Failed to store payment" });
+  }
+});
+
+// Get all payments
+app.get('/payments/all', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const payments = await paymentsCollection.find().toArray();
+    res.send(payments);
+  } catch (error) {
+    console.error("Error fetching payments:", error);
+    res.status(500).send({ message: "Failed to fetch payments" });
   }
 });
 
