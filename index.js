@@ -335,6 +335,13 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
   res.send(result);
 });
 
+// Get all confirmed bookings for the logged-in user
+app.get('/bookings/confirmed/:email', verifyFbToken, verifyMember, async (req, res) => {
+  const email = req.params.email;
+  const bookings = await bookingsCollection.find({ userEmail: email, status: "confirmed" }).toArray();
+  res.send(bookings);
+});
+
 // Confirm booking after successful payment
 app.patch('/bookings/confirm/:id', verifyFbToken, verifyMember, async (req, res) => {
   const id = req.params.id;
