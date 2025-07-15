@@ -8,6 +8,9 @@ const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8
 const serviceAccount = JSON.parse(decoded);
 const courts = require('../scms-client-side/public/courts.json');
 
+const Stripe = require('stripe');
+const stripe = Stripe(process.env.PAYMENT_GATEWAY_KEY);
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -36,7 +39,8 @@ async function run() {
     const bookingsCollection = db.collection("bookings");
     const usersCollection = db.collection("users");
     const announcementsCollection = db.collection("announcements");
-
+    const paymentsCollection = db.collection("payments");
+    const couponsCollection = db.collection("coupons");
 
 
     // custom middleware
@@ -268,6 +272,21 @@ app.get('/bookings/approved/:email', verifyFbToken, verifyMember, async (req, re
   res.send(bookings);
 });
 
+// Get a single booking by ID
+app.get('/bookings/:id', verifyFbToken, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const booking = await bookingsCollection.findOne({ _id: new ObjectId(id) });
+    if (!booking) {
+      return res.status(404).send({ message: "Booking not found" });
+    }
+    res.send(booking);
+  } catch (error) {
+    console.error("Error fetching booking by ID:", error);
+    res.status(500).send({ message: "Failed to fetch booking" });
+  }
+});
+
 //  Cancel booking by updating status
 app.patch('/bookings/cancel/:id', verifyFbToken, async (req, res) => {
   const id = req.params.id;
@@ -316,6 +335,23 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
   res.send(result);
 });
 
+// Confirm booking after successful payment
+app.patch('/bookings/confirm/:id', verifyFbToken, async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const result = await bookingsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "confirmed" } }
+    );
+
+    res.send(result);
+  } catch (error) {
+    console.error("Error confirming booking:", error);
+    res.status(500).send({ message: "Failed to confirm booking" });
+  }
+});
+
  // Route to create booking 
     app.post('/bookings', verifyFbToken, async (req, res) => {
       const booking = req.body;
@@ -324,6 +360,7 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
       res.send(result);
     });
 
+    
 // Admin stats route
 app.get('/admin/stats', verifyFbToken, verifyAdmin, async (req, res) => {
   try {
@@ -412,6 +449,46 @@ app.delete('/announcements/:id',verifyFbToken, verifyAdmin, async (req, res) => 
   res.send(result);
 });
 
+// Validate coupon code
+app.get('/coupons/:code', verifyFbToken, async (req, res) => {
+  const code = req.params.code;
+  const coupon = await couponsCollection.findOne({ code });
+  if (!coupon) {
+    return res.status(404).send({ message: "Invalid coupon code" });
+  }
+  res.send(coupon);
+});
+
+
+// Store payment data after successful payment
+app.post('/payments', verifyFbToken, async (req, res) => {
+  try {
+    const payment = req.body;
+    payment.createdAt = new Date(); // store payment date
+    const result = await paymentsCollection.insertOne(payment);
+    res.send(result);
+  } catch (error) {
+    console.error("Error storing payment:", error);
+    res.status(500).send({ message: "Failed to store payment" });
+  }
+});
+
+// Create payment intent
+app.post('/create-payment-intent', verifyFbToken, async (req, res) => {
+  const { price } = req.body;
+
+  const amount = parseInt(price * 100); // stripe uses cents
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount,
+    currency: 'usd',
+    payment_method_types: ['card'],
+  });
+
+  res.send({
+    clientSecret: paymentIntent.client_secret,
+  });
+});
   } finally {
     
   }
