@@ -336,7 +336,7 @@ app.delete('/bookings/reject/:id', verifyFbToken, verifyAdmin, async (req, res) 
 });
 
 // Confirm booking after successful payment
-app.patch('/bookings/confirm/:id', verifyFbToken, async (req, res) => {
+app.patch('/bookings/confirm/:id', verifyFbToken, verifyMember, async (req, res) => {
   const id = req.params.id;
 
   try {
@@ -450,7 +450,7 @@ app.delete('/announcements/:id',verifyFbToken, verifyAdmin, async (req, res) => 
 });
 
 // Validate coupon code
-app.get('/coupons/:code', verifyFbToken, async (req, res) => {
+app.get('/coupons/:code', verifyFbToken, verifyMember, async (req, res) => {
   const code = req.params.code;
   const coupon = await couponsCollection.findOne({ code });
   if (!coupon) {
@@ -459,9 +459,15 @@ app.get('/coupons/:code', verifyFbToken, async (req, res) => {
   res.send(coupon);
 });
 
+// Get all payments for a user
+app.get('/payments/user/:email', verifyFbToken, verifyMember, async (req, res) => {
+  const email = req.params.email;
+  const payments = await paymentsCollection.find({ userEmail: email }).toArray();
+  res.send(payments);
+});
 
 // Store payment data after successful payment
-app.post('/payments', verifyFbToken, async (req, res) => {
+app.post('/payments', verifyFbToken, verifyMember, async (req, res) => {
   try {
     const payment = req.body;
     payment.createdAt = new Date(); // store payment date
@@ -474,7 +480,7 @@ app.post('/payments', verifyFbToken, async (req, res) => {
 });
 
 // Create payment intent
-app.post('/create-payment-intent', verifyFbToken, async (req, res) => {
+app.post('/create-payment-intent', verifyFbToken, verifyMember, async (req, res) => {
   const { price } = req.body;
 
   const amount = parseInt(price * 100); // stripe uses cents
