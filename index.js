@@ -474,6 +474,12 @@ app.delete('/announcements/:id',verifyFbToken, verifyAdmin, async (req, res) => 
   res.send(result);
 });
 
+// Get all coupons
+app.get('/coupons', verifyFbToken, verifyAdmin, async (req, res) => {
+  const coupons = await couponsCollection.find().toArray();
+  res.send(coupons);
+});
+
 // Validate coupon code
 app.get('/coupons/:code', verifyFbToken, verifyMember, async (req, res) => {
   const code = req.params.code;
@@ -483,6 +489,32 @@ app.get('/coupons/:code', verifyFbToken, verifyMember, async (req, res) => {
   }
   res.send(coupon);
 });
+
+// Add coupon
+app.post('/coupons', verifyFbToken, verifyAdmin, async (req, res) => {
+  const coupon = req.body;
+  const result = await couponsCollection.insertOne(coupon);
+  res.send(result);
+});
+
+// Update coupon
+app.put('/coupons/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const { discountPercentage } = req.body;
+  const result = await couponsCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { discountPercentage } }
+  );
+  res.send(result);
+});
+
+// Delete coupon
+app.delete('/coupons/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const result = await couponsCollection.deleteOne({ _id: new ObjectId(id) });
+  res.send(result);
+});
+
 
 // Get all payments for a user
 app.get('/payments/user/:email', verifyFbToken, verifyMember, async (req, res) => {
