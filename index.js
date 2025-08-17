@@ -41,6 +41,8 @@ async function run() {
     const announcementsCollection = db.collection("announcements");
     const paymentsCollection = db.collection("payments");
     const couponsCollection = db.collection("coupons");
+    const plansCollection = db.collection("plans");
+    const subscriptionsCollection = db.collection("subscriptions");
 
 
     // custom middleware
@@ -250,6 +252,70 @@ app.delete('/courts/:id', verifyFbToken, verifyAdmin, async (req, res) => {
     res.status(500).send({ message: "Insert failed" });
   }
 });
+
+// Get all plans
+app.get('/plans', async (req, res) => {
+  try {
+    const plans = await plansCollection.find().toArray();
+    res.send(plans);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch plans" });
+  }
+});
+
+// Admin: Add new plan
+app.post('/plans', verifyFbToken, verifyAdmin, async (req, res) => {
+  try {
+    const plan = req.body;
+    const result = await plansCollection.insertOne(plan);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to add plan" });
+  }
+});
+
+// Admin: Update plan
+app.put('/plans/:id', verifyFbToken, verifyAdmin, async (req, res) => {
+  const id = req.params.id;
+  const data = req.body;
+  try {
+    const result = await plansCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: data }
+    );
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update plan" });
+  }
+});
+
+// Member: Subscribe to plan
+app.post('/subscriptions', verifyFbToken, async (req, res) => {
+  const { planId } = req.body;
+  const email = req.decoded.email;
+
+  try {
+    const existing = await subscriptionsCollection.findOne({ userEmail: email, planId });
+    if (existing) return res.status(400).send({ message: "Already subscribed" });
+
+    const result = await subscriptionsCollection.insertOne({ userEmail: email, planId, subscribedAt: new Date() });
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to subscribe" });
+  }
+});
+
+// Get subscriptions of user
+app.get('/subscriptions/:email', verifyFbToken, async (req, res) => {
+  const email = req.params.email;
+  try {
+    const subscriptions = await subscriptionsCollection.find({ userEmail: email }).toArray();
+    res.send(subscriptions);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch subscriptions" });
+  }
+});
+
 
 // Get all pending bookings
 app.get('/bookings/pending', verifyFbToken, verifyAdmin, async (req, res) => {
